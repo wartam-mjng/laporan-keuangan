@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laporan Keuangan PAB GPS - Pemasukan & Pengeluaran</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-full text-slate-800 flex flex-col bg-slate-50 antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-emerald-200">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-900 leading-tight">Laporan Keuangan PAB GPS</h1>
+                        <p class="text-xs text-slate-500">Pengelolaan Laporan Pemasukan dan Pengeluaran</p>
+                    </div>
+                </div>
+
+                <!-- Right Action Controls -->
+                <div class="flex items-center space-x-2 sm:space-x-3">
+                    <button onclick="openUnlockModal()" id="unlockBtn" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>Buka Akses</span>
+                    </button>
+
+                    <div id="actionControls" class="hidden items-center space-x-2 sm:space-x-3">
+                    <!-- Google Sheets Sync Status Indicator -->
+                    <button onclick="openSheetsModal()" id="syncStatusBtn" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition">
+                        <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse" id="syncDot"></span>
+                        <span id="syncStatusText" class="hidden sm:inline">Lokal (Belum Sync)</span>
+                        <i class="fa-solid fa-cloud-arrow-up text-xs sm:ml-1"></i>
+                    </button>
+
+                    <!-- Security & Password Button -->
+                    <button onclick="openSecurityModal()" title="Keamanan & Password" class="p-2 text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition">
+                        <i class="fa-solid fa-key text-lg"></i>
+                    </button>
+
+                    <!-- Export Data Button -->
+                    <button onclick="exportToCSV()" title="Ekspor CSV" class="p-2 text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition">
+                        <i class="fa-solid fa-file-csv text-lg"></i>
+                    </button>
+
+                    <!-- Category Manager Button -->
+                    <button onclick="openCategoryModal()" title="Kelola Kategori" class="p-2 text-slate-600 hover:text-emerald-600 hover:bg-slate-100 rounded-lg transition">
+                        <i class="fa-solid fa-tags text-lg"></i>
+                    </button>
+
+                    <!-- Add Transaction Primary CTA -->
+                    <button onclick="openTransactionModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold flex items-center space-x-1.5 shadow-sm shadow-emerald-200 transition">
+                        <i class="fa-solid fa-plus"></i>
+                        <span class="hidden sm:inline">Tambah Transaksi</span>
+                    </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Layout -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Top Summary Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Net Balance Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Saldo</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="totalBalance">Rp 0</h3>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-slate-100 text-slate-600">
+                        <i class="fa-solid fa-scale-balanced text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center space-x-1">
+                    <span id="balanceRatio" class="font-semibold text-slate-700">Saldo keuangan terupdate</span>
+                </div>
+            </div>
+
+            <!-- Total Income Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-emerald-600 uppercase tracking-wider">Total Pemasukan</p>
+                        <h3 class="text-2xl font-bold text-emerald-600 mt-1" id="totalIncome">Rp 0</h3>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-emerald-50 text-emerald-600">
+                        <i class="fa-solid fa-arrow-down-left text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center space-x-1">
+                    <span id="incomeCount" class="font-semibold text-slate-700">0</span>
+                    <span>transaksi masuk</span>
+                </div>
+            </div>
+
+            <!-- Total Expense Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-rose-600 uppercase tracking-wider">Total Pengeluaran</p>
+                        <h3 class="text-2xl font-bold text-rose-600 mt-1" id="totalExpense">Rp 0</h3>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-rose-50 text-rose-600">
+                        <i class="fa-solid fa-arrow-up-right text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center space-x-1">
+                    <span id="expenseCount" class="font-semibold text-slate-700">0</span>
+                    <span>transaksi keluar</span>
+                </div>
+            </div>
+
+            <!-- Current Month Summary -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-medium text-indigo-600 uppercase tracking-wider">Arus Kas Bulan Ini</p>
+                        <h3 class="text-2xl font-bold text-slate-900 mt-1" id="monthlyCashflow">Rp 0</h3>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+                        <i class="fa-solid fa-calendar-day text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-3 text-xs text-slate-500 flex items-center space-x-1">
+                    <span id="currentMonthName" class="font-semibold text-slate-700">Bulan Ini</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics & Visualization Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Monthly Overview Bar Chart -->
+            <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-column text-emerald-600"></i>
+                        <span>Perbandingan Pemasukan vs Pengeluaran</span>
+                    </h3>
+                </div>
+                <div class="h-64 relative">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Category Expense Distribution Doughnut Chart -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-pie text-rose-500"></i>
+                        <span>Pengeluaran per Kategori</span>
+                    </h3>
+                </div>
+                <div class="h-64 relative flex items-center justify-center">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Table Section -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <!-- Table Action & Filters Bar -->
+            <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center bg-slate-50/50">
+                <div class="flex items-center space-x-2">
+                    <h3 class="text-base font-bold text-slate-800">Daftar Transaksi</h3>
+                    <span id="totalRecordBadge" class="bg-slate-200 text-slate-700 text-xs px-2 py-0.5 rounded-full font-medium">0 Data</span>
+                </div>
+
+                <!-- Filter Controls Group -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <!-- Search Input -->
+                    <div class="col-span-2 sm:col-span-1 relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400"></i>
+                        <input type="text" id="searchInput" oninput="renderApp()" placeholder="Cari catatan..." class="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    </div>
+
+                    <!-- Type Filter -->
+                    <select id="filterType" onchange="renderApp()" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <option value="ALL">Semua Jenis</option>
+                        <option value="PEMASUKAN">Pemasukan</option>
+                        <option value="PENGELUARAN">Pengeluaran</option>
+                    </select>
+
+                    <!-- Category Filter -->
+                    <select id="filterCategory" onchange="renderApp()" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <option value="ALL">Semua Kategori</option>
+                    </select>
+
+                    <!-- Date Filter -->
+                    <input type="month" id="filterMonth" onchange="renderApp()" class="w-full px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                </div>
+            </div>
+
+            <!-- Transactions Table View -->
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-500 uppercase text-[11px] font-semibold tracking-wider border-b border-slate-200">
+                            <th class="py-3 px-4">Tanggal</th>
+                            <th class="py-3 px-4">Jenis</th>
+                            <th class="py-3 px-4">Kategori</th>
+                            <th class="py-3 px-4">Keterangan</th>
+                            <th class="py-3 px-4">Metode</th>
+                            <th class="py-3 px-4">Bukti</th>
+                            <th class="py-3 px-4 text-right">Jumlah (Rp)</th>
+                            <th id="actionHeader" class="py-3 px-4 text-center hidden">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionTableBody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                        <!-- Dynamic content injected here -->
+                    </tbody>
+                </table>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden py-12 text-center text-slate-400">
+                    <i class="fa-solid fa-receipt text-4xl mb-3 text-slate-300"></i>
+                    <p class="text-sm font-medium">Belum ada catatan transaksi</p>
+                    <p class="text-xs text-slate-400 mt-1">Klik tombol "+ Tambah Transaksi" untuk menambahkan data baru.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL: Add / Edit Transaction -->
+    <div id="transactionModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base" id="modalTitle">Tambah Transaksi</h3>
+                <button onclick="closeTransactionModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="transactionForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="transId">
+
+                <!-- Type Selector (Tabs) -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Jenis Transaksi</label>
+                    <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl">
+                        <button type="button" id="btnTypeIncome" onclick="setFormType('PEMASUKAN')" class="py-2 text-xs font-bold rounded-lg transition text-slate-600">
+                            <i class="fa-solid fa-arrow-down-left mr-1"></i> Pemasukan
+                        </button>
+                        <button type="button" id="btnTypeExpense" onclick="setFormType('PENGELUARAN')" class="py-2 text-xs font-bold rounded-lg transition text-slate-600">
+                            <i class="fa-solid fa-arrow-up-right mr-1"></i> Pengeluaran
+                        </button>
+                    </div>
+                    <input type="hidden" id="transType" value="PEMASUKAN" required>
+                </div>
+
+                <!-- Nominal Amount -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Jumlah</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-2.5 text-slate-400 text-sm font-semibold">Rp</span>
+                        <input type="number" id="transAmount" min="0" step="1" placeholder="0" required class="w-full pl-10 pr-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold text-slate-800">
+                    </div>
+                </div>
+
+                <!-- Date & Category Grid -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Tanggal</label>
+                        <input type="date" id="transDate" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Kategori</label>
+                        <select id="transCategory" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 bg-white">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Metode Pembayaran / Akun</label>
+                    <select id="transMethod" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 bg-white">
+                        <option value="Tunai / Kas">Tunai / Kas</option>
+                        <option value="Transfer Bank">Transfer Bank</option>
+                        <option value="E-Wallet">E-Wallet (Gopay/OVO/Dana)</option>
+                        <option value="Kartu Kredit">Kartu Kredit</option>
+                    </select>
+                </div>
+
+                <!-- Description / Notes -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Uraian</label>
+                    <input type="text" id="transNote" placeholder="Contoh: Gaji bulanan, Beli Groceries..." required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800">
+                </div>
+
+                <!-- Proof Link -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Link Bukti Transaksi <span class="font-normal text-slate-400">(opsional)</span></label>
+                    <input type="url" id="transProofUrl" placeholder="https://drive.google.com/..." class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800">
+                </div>
+
+                <!-- Form Action Buttons -->
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeTransactionModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition">Simpan Transaksi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Google Sheets Integration Setup -->
+    <div id="sheetsModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-file-excel text-emerald-600 text-xl"></i>
+                    <h3 class="font-bold text-slate-800 text-base">Integrasi Database Google Sheets</h3>
+                </div>
+                <button onclick="closeSheetsModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5 custom-scrollbar text-xs sm:text-sm text-slate-600">
+                <p>Hubungkan aplikasi ini ke Google Sheets pribadi Anda agar seluruh data tersimpan secara permanen di cloud dan bisa diakses dari perangkat manapun.</p>
+                <p class="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Wajib deploy Apps Script <b>milik Anda sendiri</b> dan isi Web App URL-nya di sini. Jangan memakai URL milik orang lain, agar data keuangan Anda tidak tercampur dengan data pengguna lain di spreadsheet yang sama.</p>
+
+                <!-- URL Input Configuration -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="space-y-1">
+                        <label class="block font-semibold text-slate-800 text-xs">Google Apps Script Web App URL</label>
+                        <input type="url" id="sheetWebUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                        <button onclick="saveSheetUrl()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-xs hover:bg-emerald-700 transition flex items-center">
+                            <i class="fa-solid fa-floppy-disk mr-1.5"></i> Simpan URL
+                        </button>
+                        <button onclick="fetchDataFromGoogleSheet()" class="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-semibold text-xs hover:bg-emerald-100 transition">
+                            <i class="fa-solid fa-rotate mr-1"></i> Tarik Data Sheets
+                        </button>
+                        <button onclick="testSheetConnection()" class="px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg font-semibold text-xs hover:bg-indigo-100 transition">
+                            <i class="fa-solid fa-plug mr-1"></i> Uji Koneksi & Sync
+                        </button>
+                        <button onclick="triggerSetupDatabase()" class="px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg font-semibold text-xs hover:bg-purple-100 transition">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Setup Database Sheets
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tutorial Steps -->
+                <div class="space-y-3">
+                    <h4 class="font-bold text-slate-800 text-sm">Panduan Setup Backend (Code.gs):</h4>
+                    <ol class="list-decimal pl-5 space-y-2 text-slate-600 text-xs">
+                        <li>Buka file <code class="bg-slate-100 px-1.5 py-0.5 rounded text-emerald-700 font-mono">Code.gs</code> di projek Anda.</li>
+                        <li>Salin seluruh kode dari file <code class="bg-slate-100 px-1.5 py-0.5 rounded text-emerald-700 font-mono">Code.gs</code> ke Apps Script Google Sheet Anda.</li>
+                        <li>Klik **Terapkan (Deploy) > Deployment Baru (New Deployment)**.</li>
+                        <li>Setel akses ke **Anyone (Siapa Saja)**.</li>
+                        <li>Salin **Web App URL** dan tempelkan pada kolom di atas!</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Category Manager -->
+    <div id="categoryModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base">Kelola Kategori Transaksi</h3>
+                <button onclick="closeCategoryModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <!-- Add New Category Form -->
+                <div class="flex space-x-2">
+                    <select id="newCatType" class="px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white">
+                        <option value="PEMASUKAN">Pemasukan</option>
+                        <option value="PENGELUARAN">Pengeluaran</option>
+                    </select>
+                    <input type="text" id="newCatName" placeholder="Nama Kategori..." class="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <button onclick="addNewCategory()" class="px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition">
+                        Tambah
+                    </button>
+                </div>
+
+                <!-- Category List Container -->
+                <div class="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-1" id="categoryListContainer">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Ubah Password Keamanan Backend -->
+    <div id="securityModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800 text-base">Ubah Password Backend</h3>
+                <button onclick="closeSecurityModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Password Lama</label>
+                    <input type="password" id="inputAppPassword" placeholder="Password saat ini" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Password Baru (Min. 4 Karakter)</label>
+                    <input type="password" id="newAppPassword" placeholder="Masukkan password baru..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeSecurityModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Batal</button>
+                    <button type="button" onclick="submitChangePassword()" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md transition">Simpan Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Buka Akses Pengelolaan -->
+    <div id="unlockModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div>
+                    <h3 class="font-bold text-slate-800 text-base">Buka Akses Pengelolaan</h3>
+                    <p class="text-xs text-slate-500 mt-1">Masukkan password untuk menampilkan tombol aksi.</p>
+                </div>
+                <button onclick="closeUnlockModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form onsubmit="unlockApplication(event)" class="p-6 space-y-4">
+                <input type="password" id="unlockPassword" autocomplete="current-password" placeholder="Masukkan password..." required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeUnlockModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">Batal</button>
+                    <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md transition">Buka Akses</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRMATION MODAL -->
+    <div id="confirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full shadow-xl overflow-hidden p-6 space-y-4 text-center">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-800 text-base" id="confirmTitle">Konfirmasi Hapus</h3>
+                <p class="text-xs text-slate-500 mt-1" id="confirmMessage">Apakah Anda yakin ingin menghapus data ini?</p>
+            </div>
+            <div id="confirmPasswordGroup" class="text-left hidden">
+                <label class="block text-xs font-medium text-slate-600 mb-1">Password Keamanan</label>
+                <input type="password" id="confirmPasswordInput" placeholder="Masukkan password..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </div>
+            <div class="flex justify-center space-x-2 pt-2">
+                <button type="button" id="btnCancelConfirm" class="px-4 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Batal</button>
+                <button type="button" id="btnActionConfirm" class="px-5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-md transition">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global Application State
+        // Tidak ada lagi URL bawaan yang dibagi ke semua pengguna — setiap orang WAJIB
+        // menghubungkan Web App URL Google Sheets miliknya sendiri lewat menu "Integrasi Google Sheets",
+        // supaya data keuangan pribadi tidak tercampur ke satu spreadsheet bersama.
+        // URL Web App Apps Script milik Anda sendiri (bukan URL bersama/publik).
+        // URL Web App Google Apps Script untuk sinkronisasi Google Sheets.
+        const MY_SHEET_URL = "https://script.google.com/macros/s/AKfycbxM36gv3Pe8GJyIbY91bCotkU6Zdi5MrDScjz1gR6TvRnFX9QUHydzX_sjR4evPQEnx/exec";
+        let googleSheetUrl = localStorage.getItem('neraca_sheet_url') || MY_SHEET_URL;
+        const storedAccessPassword = localStorage.getItem('neraca_access_password');
+        let appAccessPassword = storedAccessPassword === '123456' ? 'wa1921am' : (storedAccessPassword || 'wa1921am');
+        let transactions = JSON.parse(localStorage.getItem('neraca_transactions')) || [];
+        let categories = JSON.parse(localStorage.getItem('neraca_categories')) || {
+            PEMASUKAN: ['Gaji & Upah', 'Bonus & Komisi', 'Investasi', 'Penjualan', 'Lain-lain'],
+            PENGELUARAN: ['Makanan & Minuman', 'Transportasi', 'Belanja & Groceries', 'Tagihan & Utilitas', 'Hiburan', 'Kesehatan', 'Pendidikan']
+        };
+
+        let monthlyChartInstance = null;
+        let categoryChartInstance = null;
+        let isUnlocked = false;
+
+        // Custom Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold text-white transition-all transform translate-y-2 opacity-0 duration-300`;
+            
+            if (type === 'success') toast.classList.add('bg-emerald-600');
+            else if (type === 'error') toast.classList.add('bg-rose-600');
+            else if (type === 'warning') toast.classList.add('bg-amber-600');
+            else toast.classList.add('bg-slate-800');
+
+            const iconMap = {
+                success: 'fa-circle-check',
+                error: 'fa-circle-xmark',
+                warning: 'fa-triangle-exclamation',
+                info: 'fa-circle-info'
+            };
+
+            toast.innerHTML = `<i class="fa-solid ${iconMap[type] || iconMap.info} text-base"></i> <span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // Custom Confirmation Modal Helper
+        function showConfirmModal({ title, message, requirePassword = false, onConfirm }) {
+            const modal = document.getElementById('confirmModal');
+            const titleEl = document.getElementById('confirmTitle');
+            const msgEl = document.getElementById('confirmMessage');
+            const passGroup = document.getElementById('confirmPasswordGroup');
+            const passInput = document.getElementById('confirmPasswordInput');
+            const btnConfirm = document.getElementById('btnActionConfirm');
+            const btnCancel = document.getElementById('btnCancelConfirm');
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+            passInput.value = '';
+
+            if (requirePassword) {
+                passGroup.classList.remove('hidden');
+            } else {
+                passGroup.classList.add('hidden');
+            }
+
+            modal.classList.remove('hidden');
+
+            const cleanup = () => {
+                modal.classList.add('hidden');
+                btnConfirm.onclick = null;
+                btnCancel.onclick = null;
+            };
+
+            btnCancel.onclick = cleanup;
+            btnConfirm.onclick = () => {
+                if (requirePassword && passInput.value.trim() !== appAccessPassword) {
+                    showToast('Password keamanan salah!', 'error');
+                    return;
+                }
+                cleanup();
+                onConfirm();
+            };
+        }
+
+        // Auto initialization on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const inputUrl = document.getElementById('sheetWebUrl');
+            if (inputUrl) inputUrl.value = googleSheetUrl;
+            if (googleSheetUrl && !localStorage.getItem('neraca_sheet_url')) {
+                localStorage.setItem('neraca_sheet_url', googleSheetUrl);
+            }
+
+            initCurrentMonthFilter();
+            renderApp();
+
+            if (googleSheetUrl) {
+                fetchDataFromGoogleSheet();
+            }
+        });
+
+        // Helper Utility Functions
+        function formatDateIndo(dateStr) {
+            if (!dateStr) return '-';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+            const day = parts[2];
+            const monthIdx = parseInt(parts[1], 10) - 1;
+            const year = parts[0];
+            return `${day} ${months[monthIdx] || parts[1]} ${year}`;
+        }
+
+        // Menghasilkan hash SHA-256 (hex) dari sebuah string via Web Crypto API.
+        // Password TIDAK PERNAH dikirim ke backend dalam bentuk teks polos.
+        async function sha256(str) {
+            const enc = new TextEncoder().encode(str);
+            const buf = await crypto.subtle.digest('SHA-256', enc);
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function updateSyncBadge(connected, text, loading = false) {
+            const btn = document.getElementById('syncStatusBtn');
+            const dot = document.getElementById('syncDot');
+            const txt = document.getElementById('syncStatusText');
+            if (!btn || !dot || !txt) return;
+
+            txt.innerText = text;
+            if (loading) {
+                btn.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition";
+                dot.className = "w-2 h-2 rounded-full bg-amber-500 animate-ping";
+            } else if (connected) {
+                btn.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition";
+                dot.className = "w-2 h-2 rounded-full bg-emerald-500";
+            } else {
+                btn.className = "flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition";
+                dot.className = "w-2 h-2 rounded-full bg-rose-500";
+            }
+        }
+
+        // Modal Controls
+        function openUnlockModal() {
+            document.getElementById('unlockPassword').value = '';
+            document.getElementById('unlockModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('unlockPassword').focus(), 50);
+        }
+
+        function closeUnlockModal() {
+            document.getElementById('unlockModal').classList.add('hidden');
+        }
+
+        function unlockApplication(event) {
+            event.preventDefault();
+            const password = document.getElementById('unlockPassword').value;
+            if (password !== appAccessPassword) {
+                showToast('Password keamanan salah!', 'error');
+                return;
+            }
+
+            isUnlocked = true;
+            document.getElementById('actionControls').classList.remove('hidden');
+            document.getElementById('actionControls').classList.add('flex');
+            document.getElementById('unlockBtn').classList.add('hidden');
+            document.getElementById('actionHeader').classList.remove('hidden');
+            closeUnlockModal();
+            renderTable();
+            showToast('Akses pengelolaan dibuka.', 'success');
+        }
+
+        function openSheetsModal() { document.getElementById('sheetsModal').classList.remove('hidden'); }
+        function closeSheetsModal() { document.getElementById('sheetsModal').classList.add('hidden'); }
+        function openSecurityModal() {
+            document.getElementById('inputAppPassword').value = '';
+            document.getElementById('newAppPassword').value = '';
+            document.getElementById('securityModal').classList.remove('hidden');
+        }
+        function closeSecurityModal() { document.getElementById('securityModal').classList.add('hidden'); }
+        function closeTransactionModal() { document.getElementById('transactionModal').classList.add('hidden'); }
+
+        // Category Manager Functions
+        function openCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('hidden');
+            renderCategoryList();
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+        }
+
+        function addNewCategory() {
+            const type = document.getElementById('newCatType').value;
+            const nameInput = document.getElementById('newCatName');
+            const name = nameInput.value.trim();
+
+            if (!name) return showToast("Masukkan nama kategori!", "warning");
+
+            if (!categories[type]) categories[type] = [];
+            if (categories[type].includes(name)) {
+                return showToast("Kategori ini sudah ada!", "warning");
+            }
+
+            categories[type].push(name);
+            nameInput.value = '';
+            saveData();
+            renderCategoryList();
+            renderApp();
+            showToast("Kategori berhasil ditambahkan!", "success");
+
+            if (googleSheetUrl) pushCategoryToSheet('addCategory', type, name);
+        }
+
+        function deleteCategory(type, name) {
+            showConfirmModal({
+                title: 'Hapus Kategori',
+                message: `Hapus kategori "${name}"?`,
+                requirePassword: false,
+                onConfirm: () => {
+                    categories[type] = (categories[type] || []).filter(c => c !== name);
+                    saveData();
+                    renderCategoryList();
+                    renderApp();
+                    showToast("Kategori berhasil dihapus!", "success");
+                    if (googleSheetUrl) pushCategoryToSheet('deleteCategory', type, name);
+                }
+            });
+        }
+
+        function renderCategoryList() {
+            const container = document.getElementById('categoryListContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            ['PEMASUKAN', 'PENGELUARAN'].forEach(type => {
+                const title = document.createElement('h4');
+                title.className = `text-xs font-bold mt-2 mb-1 ${type === 'PEMASUKAN' ? 'text-emerald-700' : 'text-rose-700'}`;
+                title.innerText = type === 'PEMASUKAN' ? 'Kategori Pemasukan:' : 'Kategori Pengeluaran:';
+                container.appendChild(title);
+
+                const list = categories[type] || [];
+                if (list.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'text-xs text-slate-400 italic pl-2';
+                    empty.innerText = 'Belum ada kategori';
+                    container.appendChild(empty);
+                } else {
+                    list.forEach(cat => {
+                        const item = document.createElement('div');
+                        item.className = 'flex justify-between items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs text-slate-700 border border-slate-100';
+                        const label = document.createElement('span');
+                        label.textContent = cat;
+                        const deleteButton = document.createElement('button');
+                        deleteButton.className = 'text-slate-400 hover:text-rose-600 transition p-1';
+                        deleteButton.title = 'Hapus kategori';
+                        deleteButton.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
+                        deleteButton.addEventListener('click', () => deleteCategory(type, cat));
+                        item.append(label, deleteButton);
+                        container.appendChild(item);
+                    });
+                }
+            });
+        }
+
+        function populateCategoryFilterOptions() {
+            const filterCat = document.getElementById('filterCategory');
+            if (!filterCat) return;
+            const currentVal = filterCat.value;
+            filterCat.innerHTML = '<option value="ALL">Semua Kategori</option>';
+
+            const allCats = Array.from(new Set([...(categories.PEMASUKAN || []), ...(categories.PENGELUARAN || [])]));
+            allCats.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.innerText = cat;
+                filterCat.appendChild(opt);
+            });
+            filterCat.value = currentVal || 'ALL';
+        }
+
+        function setFormType(type) {
+            document.getElementById('transType').value = type;
+            const btnIncome = document.getElementById('btnTypeIncome');
+            const btnExpense = document.getElementById('btnTypeExpense');
+            
+            if (type === 'PEMASUKAN') {
+                btnIncome.className = 'py-2 text-xs font-bold rounded-lg transition bg-emerald-600 text-white shadow-sm';
+                btnExpense.className = 'py-2 text-xs font-bold rounded-lg transition text-slate-600 hover:text-slate-900';
+            } else {
+                btnIncome.className = 'py-2 text-xs font-bold rounded-lg transition text-slate-600 hover:text-slate-900';
+                btnExpense.className = 'py-2 text-xs font-bold rounded-lg transition bg-rose-600 text-white shadow-sm';
+            }
+
+            populateFormCategories(type);
+        }
+
+        function populateFormCategories(type) {
+            const select = document.getElementById('transCategory');
+            if (!select) return;
+            select.innerHTML = '';
+            const catList = categories[type] || [];
+            catList.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.innerText = cat;
+                select.appendChild(opt);
+            });
+        }
+
+        function saveSheetUrl() {
+            const url = document.getElementById('sheetWebUrl').value.trim();
+            if (url) {
+                googleSheetUrl = url;
+                localStorage.setItem('neraca_sheet_url', url);
+                showToast("URL Google Sheets Web App disimpan!", "success");
+                fetchDataFromGoogleSheet();
+            }
+        }
+
+        function testSheetConnection() {
+            saveSheetUrl();
+            syncWithGoogleSheet(true);
+        }
+
+        function exportToCSV() {
+            if (transactions.length === 0) {
+                return showToast("Tidak ada data transaksi untuk diekspor.", "warning");
+            }
+            let csv = "ID Transaksi,Tanggal,Jenis,Kategori,Metode,Jumlah (Rp),Catatan,Link Bukti\n";
+            transactions.forEach(t => {
+                const noteEscaped = `"${(t.note || '').replace(/"/g, '""')}"`;
+                const catEscaped = `"${(t.category || '').replace(/"/g, '""')}"`;
+                const proofEscaped = `"${(t.proofUrl || '').replace(/"/g, '""')}"`;
+                csv += `${t.id},${t.date},${t.type},${catEscaped},${t.method || 'Tunai'},${t.amount},${noteEscaped},${proofEscaped}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Neraca_Keuangan_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Ekspor CSV berhasil!", "success");
+        }
+
+        // Fetch transactions from Google Sheets DB via GET
+        async function fetchDataFromGoogleSheet() {
+            if (!googleSheetUrl) return;
+            updateSyncBadge(true, "Memuat Data...", true);
+            try {
+                const response = await fetch(googleSheetUrl);
+                const res = await response.json();
+                
+                if (res.status === 'success' && Array.isArray(res.data)) {
+                    if (res.data.length > 0 || transactions.length === 0) {
+                        transactions = res.data;
+                    }
+                    if (res.categories && ((res.categories.PEMASUKAN && res.categories.PEMASUKAN.length) || (res.categories.PENGELUARAN && res.categories.PENGELUARAN.length))) {
+                        categories = res.categories;
+                    }
+                    saveData();
+                    renderApp();
+                    updateSyncBadge(true, "Terhubung Sheets");
+                } else if (Array.isArray(res)) {
+                    transactions = res;
+                    saveData();
+                    renderApp();
+                    updateSyncBadge(true, "Terhubung Sheets");
+                } else {
+                    updateSyncBadge(false, "Gagal Muat Data");
+                }
+            } catch (err) {
+                console.error("Gagal menarik data dari Google Sheets:", err);
+                updateSyncBadge(false, "Error Sync");
+            }
+        }
+
+        async function submitChangePassword() {
+            const oldPass = document.getElementById('inputAppPassword').value.trim();
+            const newPass = document.getElementById('newAppPassword').value.trim();
+
+            if (!googleSheetUrl) return showToast("Hubungkan URL Web App terlebih dahulu.", "warning");
+            if (!newPass || newPass.length < 4) return showToast("Password baru minimal 4 karakter.", "warning");
+
+            try {
+                const oldPasswordHash = await sha256(oldPass);
+                const newPasswordHash = await sha256(newPass);
+                const response = await fetch(googleSheetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'setPassword',
+                        oldPasswordHash: oldPasswordHash,
+                        newPasswordHash: newPasswordHash
+                    })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    appAccessPassword = newPass;
+                    document.getElementById('inputAppPassword').value = newPass;
+                    localStorage.setItem('neraca_access_password', newPass);
+                    showToast("Password keamanan berhasil diubah!", "success");
+                    document.getElementById('newAppPassword').value = '';
+                    closeSecurityModal();
+                } else {
+                    showToast("Gagal mengubah password: " + res.message, "error");
+                }
+            } catch (err) {
+                showToast("Kesalahan koneksi: " + err.message, "error");
+            }
+        }
+
+        // Save data to LocalStorage
+        function saveData() {
+            localStorage.setItem('neraca_transactions', JSON.stringify(transactions));
+            localStorage.setItem('neraca_categories', JSON.stringify(categories));
+            if (googleSheetUrl) {
+                localStorage.setItem('neraca_sheet_url', googleSheetUrl);
+            }
+        }
+
+        // Set default month filter to current YYYY-MM
+        function initCurrentMonthFilter() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            document.getElementById('transDate').value = today.toISOString().split('T')[0];
+            
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            document.getElementById('currentMonthName').innerText = `${monthNames[today.getMonth()]} ${yyyy}`;
+        }
+
+        // Main Render Function
+        function renderApp() {
+            populateCategoryFilterOptions();
+            renderTable();
+            renderSummaryCards();
+            renderCharts();
+        }
+
+        // Render Transaction Table & Apply Filters
+        function renderTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const typeFilter = document.getElementById('filterType').value;
+            const categoryFilter = document.getElementById('filterCategory').value;
+            const monthFilter = document.getElementById('filterMonth').value;
+
+            const filtered = transactions.filter(t => {
+                const matchSearch = String(t.note || '').toLowerCase().includes(searchTerm) || String(t.category || '').toLowerCase().includes(searchTerm);
+                const matchType = typeFilter === 'ALL' || t.type === typeFilter;
+                const matchCategory = categoryFilter === 'ALL' || t.category === categoryFilter;
+                const matchMonth = !monthFilter || t.date.startsWith(monthFilter);
+                return matchSearch && matchType && matchCategory && matchMonth;
+            });
+
+            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            document.getElementById('totalRecordBadge').innerText = `${filtered.length} Data`;
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
+
+                const isIncome = item.type === 'PEMASUKAN';
+                const typeBadge = isIncome 
+                    ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-arrow-down-left mr-1"></i>Pemasukan</span>`
+                    : `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800"><i class="fa-solid fa-arrow-up-right mr-1"></i>Pengeluaran</span>`;
+
+                const formattedAmount = (isIncome ? '+' : '-') + ' Rp ' + parseInt(item.amount).toLocaleString('id-ID');
+                const amountClass = isIncome ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+                const proofLink = item.proofUrl && /^https?:\/\//i.test(item.proofUrl)
+                    ? `<a href="${escapeHtml(item.proofUrl)}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-800" title="Buka bukti transaksi"><i class="fa-solid fa-paperclip"></i></a>`
+                    : '<span class="text-slate-300">-</span>';
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-medium text-slate-600">${formatDateIndo(item.date)}</td>
+                    <td class="py-3 px-4">${typeBadge}</td>
+                    <td class="py-3 px-4 font-semibold text-slate-700">${escapeHtml(item.category)}</td>
+                    <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${escapeHtml(item.note)}</td>
+                    <td class="py-3 px-4 text-slate-500 text-xs">${escapeHtml(item.method || 'Tunai')}</td>
+                    <td class="py-3 px-4 text-center">${proofLink}</td>
+                    <td class="py-3 px-4 text-right ${amountClass}">${formattedAmount}</td>
+                    <td class="py-3 px-4 text-center ${isUnlocked ? '' : 'hidden'}">
+                        <div class="flex items-center justify-center space-x-1">
+                            <button onclick="editTransaction('${item.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition" title="Edit">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteTransaction('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition" title="Hapus">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Calculate Totals and Render Summary Cards
+        function renderSummaryCards() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+            let incomeCount = 0;
+            let expenseCount = 0;
+
+            const now = new Date();
+            const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            let monthlyIncome = 0;
+            let monthlyExpense = 0;
+
+            transactions.forEach(t => {
+                const amt = parseFloat(t.amount) || 0;
+                if (t.type === 'PEMASUKAN') {
+                    totalIncome += amt;
+                    incomeCount++;
+                    if (t.date.startsWith(currentYearMonth)) monthlyIncome += amt;
+                } else {
+                    totalExpense += amt;
+                    expenseCount++;
+                    if (t.date.startsWith(currentYearMonth)) monthlyExpense += amt;
+                }
+            });
+
+            const netBalance = totalIncome - totalExpense;
+            const monthlyCashflow = monthlyIncome - monthlyExpense;
+
+            document.getElementById('totalBalance').innerText = 'Rp ' + netBalance.toLocaleString('id-ID');
+            document.getElementById('totalIncome').innerText = 'Rp ' + totalIncome.toLocaleString('id-ID');
+            document.getElementById('totalExpense').innerText = 'Rp ' + totalExpense.toLocaleString('id-ID');
+            
+            const monthlyElement = document.getElementById('monthlyCashflow');
+            monthlyElement.innerText = (monthlyCashflow >= 0 ? '+' : '') + 'Rp ' + monthlyCashflow.toLocaleString('id-ID');
+            monthlyElement.className = `text-2xl font-bold mt-1 ${monthlyCashflow >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+
+            document.getElementById('incomeCount').innerText = incomeCount;
+            document.getElementById('expenseCount').innerText = expenseCount;
+            document.getElementById('balanceRatio').innerText = 'Saldo keuangan terupdate';
+        }
+
+        // Render Chart.js Analytics
+        function renderCharts() {
+            const monthMap = {};
+            
+            transactions.forEach(t => {
+                const monthKey = String(t.date || '').substring(0, 7); // YYYY-MM
+                if (!monthMap[monthKey]) monthMap[monthKey] = { income: 0, expense: 0 };
+                if (t.type === 'PEMASUKAN') monthMap[monthKey].income += parseFloat(t.amount) || 0;
+                else monthMap[monthKey].expense += parseFloat(t.amount) || 0;
+            });
+
+            const sortedMonths = Object.keys(monthMap).sort().slice(-6);
+            const labels = sortedMonths.map(m => {
+                const [y, mm] = m.split('-');
+                return `${mm}/${y.substring(2)}`;
+            });
+            const incomeData = sortedMonths.map(m => monthMap[m].income);
+            const expenseData = sortedMonths.map(m => monthMap[m].expense);
+
+            const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+            if (monthlyChartInstance) monthlyChartInstance.destroy();
+
+            monthlyChartInstance = new Chart(ctxMonthly, {
+                type: 'bar',
+                data: {
+                    labels: labels.length ? labels : ['Bulan Ini'],
+                    datasets: [
+                        { label: 'Pemasukan', data: incomeData.length ? incomeData : [0], backgroundColor: '#22c55e', borderRadius: 6 },
+                        { label: 'Pengeluaran', data: expenseData.length ? expenseData : [0], backgroundColor: '#f43f5e', borderRadius: 6 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            const categoryMap = {};
+            transactions.filter(t => t.type === 'PENGELUARAN').forEach(t => {
+                categoryMap[t.category || 'Tanpa Kategori'] = (categoryMap[t.category || 'Tanpa Kategori'] || 0) + (parseFloat(t.amount) || 0);
+            });
+
+            const catLabels = Object.keys(categoryMap);
+            const catData = Object.values(categoryMap);
+            const palette = ['#f43f5e', '#3b82f6', '#eab308', '#a855f7', '#14b8a6', '#f97316', '#64748b'];
+
+            const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(ctxCategory, {
+                type: 'doughnut',
+                data: {
+                    labels: catLabels.length ? catLabels : ['Belum Ada Data'],
+                    datasets: [{
+                        data: catData.length ? catData : [1],
+                        backgroundColor: catData.length ? palette : ['#e2e8f0']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+                }
+            });
+        }
+
+        // Transaction Modal Controls & Handlers
+        function openTransactionModal(editId = null) {
+            if (!isUnlocked) return openUnlockModal();
+            document.getElementById('transactionModal').classList.remove('hidden');
+            if (editId) {
+                const item = transactions.find(t => t.id === editId);
+                if (!item) return;
+                document.getElementById('modalTitle').innerText = 'Edit Transaksi';
+                document.getElementById('transId').value = item.id;
+                document.getElementById('transAmount').value = item.amount;
+                document.getElementById('transDate').value = item.date;
+                document.getElementById('transNote').value = item.note;
+                document.getElementById('transProofUrl').value = item.proofUrl || '';
+                document.getElementById('transMethod').value = item.method || 'Tunai / Kas';
+                setFormType(item.type);
+                document.getElementById('transCategory').value = item.category;
+            } else {
+                document.getElementById('modalTitle').innerText = 'Tambah Transaksi Baru';
+                document.getElementById('transactionForm').reset();
+                document.getElementById('transId').value = '';
+                initCurrentMonthFilter();
+                setFormType('PEMASUKAN');
+            }
+        }
+
+        function editTransaction(id) {
+            openTransactionModal(id);
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            if (!isUnlocked) return openUnlockModal();
+            const id = document.getElementById('transId').value || 'TRX-' + Date.now();
+            const type = document.getElementById('transType').value;
+            const amount = parseFloat(document.getElementById('transAmount').value);
+            const date = document.getElementById('transDate').value;
+            const category = document.getElementById('transCategory').value;
+            const method = document.getElementById('transMethod').value;
+            const note = document.getElementById('transNote').value;
+            const proofUrl = document.getElementById('transProofUrl').value.trim();
+
+            const newTx = { id, type, amount, date, category, method, note, proofUrl };
+
+            const existingIdx = transactions.findIndex(t => t.id === id);
+            const isUpdate = existingIdx >= 0;
+            if (isUpdate) {
+                transactions[existingIdx] = newTx;
+                showToast("Transaksi berhasil diperbarui!", "success");
+            } else {
+                transactions.push(newTx);
+                showToast("Transaksi berhasil ditambahkan!", "success");
+            }
+
+            saveData();
+            renderApp();
+            closeTransactionModal();
+
+            // Kirim HANYA transaksi ini ke Google Sheets (incremental), bukan menimpa seluruh sheet.
+            if (googleSheetUrl) {
+                pushTransactionToSheet(isUpdate ? 'updateTransaction' : 'addTransaction', newTx);
+            }
+        }
+
+        function deleteTransaction(id) {
+            if (!isUnlocked) return openUnlockModal();
+            showConfirmModal({
+                title: 'Hapus Transaksi',
+                message: 'Apakah Anda yakin ingin menghapus transaksi ini?',
+                requirePassword: true,
+                onConfirm: () => {
+                    transactions = transactions.filter(t => t.id !== id);
+                    saveData();
+                    renderApp();
+                    showToast("Transaksi berhasil dihapus!", "success");
+                    if (googleSheetUrl) deleteTransactionFromSheet(id);
+                }
+            });
+        }
+
+        // Sinkronisasi PENUH (timpa seluruh sheet). Hanya dipakai untuk tombol "Uji Koneksi & Sync" manual,
+        // BUKAN dipanggil otomatis setiap tambah/edit/hapus transaksi (lihat pushTransactionToSheet).
+        async function syncWithGoogleSheet(showToastAlert = true) {
+            if (!googleSheetUrl) return;
+
+            updateSyncBadge(true, "Menyinkronkan...", true);
+            try {
+                const passwordHash = await sha256(appAccessPassword);
+                const response = await fetch(googleSheetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({
+                        action: 'syncAll',
+                        passwordHash: passwordHash,
+                        data: transactions
+                    })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    updateSyncBadge(true, "Terhubung Sheets");
+                    if (showToastAlert) showToast("Sinkronisasi ke Google Sheets berhasil!", "success");
+                } else {
+                    updateSyncBadge(false, "Gagal Sync");
+                    showToast("Gagal Sinkronisasi: " + (res.message || 'Error password'), "error");
+                }
+            } catch (err) {
+                console.error("Sinkronisasi gagal:", err);
+                updateSyncBadge(false, "Error Sync");
+            }
+        }
+
+        // Kirim SATU transaksi (tambah/edit) ke Google Sheets tanpa menimpa data lain (incremental).
+        async function pushTransactionToSheet(action, item) {
+            if (!googleSheetUrl) return;
+            try {
+                const passwordHash = await sha256(appAccessPassword);
+                const response = await fetch(googleSheetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: action, passwordHash: passwordHash, data: item })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    updateSyncBadge(true, "Terhubung Sheets");
+                } else {
+                    updateSyncBadge(false, "Gagal Sync");
+                    showToast("Gagal sinkronisasi ke Sheets: " + (res.message || 'Error'), "error");
+                }
+            } catch (err) {
+                console.error("Gagal mengirim transaksi ke Sheets:", err);
+                updateSyncBadge(false, "Error Sync");
+            }
+        }
+
+        // Hapus SATU transaksi dari Google Sheets berdasarkan ID (incremental).
+        async function deleteTransactionFromSheet(id) {
+            if (!googleSheetUrl) return;
+            try {
+                const passwordHash = await sha256(appAccessPassword);
+                const response = await fetch(googleSheetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'deleteTransaction', passwordHash: passwordHash, id: id })
+                });
+                const res = await response.json();
+                if (res.status !== 'success') {
+                    showToast("Gagal menghapus di Sheets: " + (res.message || 'Error'), "error");
+                }
+            } catch (err) {
+                console.error("Gagal menghapus transaksi di Sheets:", err);
+            }
+        }
+
+        // Sinkronkan penambahan/penghapusan kategori ke Google Sheets.
+        async function pushCategoryToSheet(action, type, name) {
+            if (!googleSheetUrl) return;
+            try {
+                const passwordHash = await sha256(appAccessPassword);
+                const response = await fetch(googleSheetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: action, passwordHash: passwordHash, type: type, name: name })
+                });
+                const res = await response.json();
+                if (res.status !== 'success') {
+                    showToast("Gagal sinkronisasi kategori: " + (res.message || 'Error'), "error");
+                }
+            } catch (err) {
+                console.error("Gagal sinkronisasi kategori:", err);
+            }
+        }
+
+        async function triggerSetupDatabase() {
+            saveSheetUrl();
+            if (!googleSheetUrl) return showToast("Masukkan URL Web App terlebih dahulu.", "warning");
+            
+            updateSyncBadge(true, "Menyiapkan DB...", true);
+            try {
+                const passwordHash = await sha256(appAccessPassword);
+                const response = await fetch(googleSheetUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ 
+                        action: 'setup',
+                        passwordHash: passwordHash
+                    })
+                });
+                const res = await response.json();
+                if (res.status === 'success') {
+                    updateSyncBadge(true, "Terhubung Sheets");
+                    showToast("Database Google Sheets berhasil disiapkan!", "success");
+                } else {
+                    updateSyncBadge(false, "Gagal Setup");
+                    showToast("Gagal Setup: " + (res.message || 'Error password'), "error");
+                }
+            } catch (err) {
+                console.error("Gagal melakukan setup database:", err);
+                updateSyncBadge(false, "Error Setup");
+                showToast("Gagal melakukan setup database.", "error");
+            }
+        }
+    </script>
+</body>
+</html>
